@@ -1,3 +1,4 @@
+'use strict'
 let usedOnStart = 0;
 let enabled = false;
 let depth = 0;
@@ -15,6 +16,9 @@ function setupProfiler() {
       setupMemory('profile', duration || 100, filter);
     },
     reset: resetMemory,
+    output(numresults) {
+      return Profiler.output(numresults);
+    }
   };
 
   overloadCPUCalc();
@@ -116,7 +120,10 @@ const Profiler = {
     Game.notify(Profiler.output());
   },
 
-  output() {
+  output(numresults) {
+    if(!numresults) {
+      numresults = 20
+    }
     const elapsedTicks = Game.time - Memory.profiler.enabledTick + 1;
     const header = 'calls\t\ttime\t\tavg\t\tfunction';
     const footer = [
@@ -124,7 +131,7 @@ const Profiler = {
       `Total: ${Memory.profiler.totalTime.toFixed(2)}`,
       `Ticks: ${elapsedTicks}`,
     ].join('\t');
-    return [].concat(header, Profiler.lines().slice(0, 20), footer).join('\n');
+    return [].concat(header, Profiler.lines().slice(0, numresults), footer).join('\n');
   },
 
   lines() {
