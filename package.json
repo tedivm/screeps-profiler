@@ -1,10 +1,10 @@
 {
   "name": "screeps-profiler",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "description": "A profiler designed for use in the game of Screeps.",
   "main": "screeps-profiler.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "npm run lint",
     "lint": "eslint ."
   },
   "repository": {

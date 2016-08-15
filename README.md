@@ -1,4 +1,4 @@
-# Screeps Profiler [ ![Codeship Status for gdborton/screeps-profiler](https://codeship.com/projects/bd2a3c50-e9f2-0132-f68f-4602e60b2e9f/status?branch=master)](https://codeship.com/projects/83021)
+# Screeps Profiler [![Build Status](https://travis-ci.org/gdborton/screeps-profiler.svg?branch=master)](https://travis-ci.org/gdborton/screeps-profiler)
 
 The Screeps Profiler is a library that helps to understand where your CPU is being spent in the game of [Screeps](https://screeps.com).
 
@@ -17,7 +17,7 @@ Your main.js will will need to be configured like so.
 ```javascript
 // Any modules that you use that modify the game's prototypes should be require'd
 // before you require the profiler.
-var profiler = require('screeps-profiler');
+const profiler = require('screeps-profiler');
 
 // This line monkey patches the global prototypes.
 profiler.enable();
@@ -28,14 +28,23 @@ module.exports.loop = function() {
 }
 ```
 
-## Usage
+## Console API
 
-You can make use of the profiler via the Screeps console.  Currently there are three commands that are available for use.
+You can make use of the profiler via the Screeps console.
 
 ```javascript
 Game.profiler.profile(ticks, [functionFilter]);
 Game.profiler.stream(ticks, [functionFilter]);
 Game.profiler.email(ticks, [functionFilter]);
+Game.profiler.background([functionFilter]);
+
+// Output current profile data.
+Game.profiler.output([lineCount]);
+
+// Reset the profiler, disabling any profiling in the process.
+Game.profiler.reset();
+
+Game.profiler.restart();
 ```
 
 **Note:** It can take up to 30 ticks if you're using `module.exports.loop` for these commands to work without issue.
@@ -45,6 +54,14 @@ Game.profiler.email(ticks, [functionFilter]);
 `stream` - Will run for the given number of ticks, and will output the gathered information each tick to the console.  The can sometimes be useful for seeing spikes in performance.
 
 `email` - This will run for the given number of ticks, and will email the output to your registered Screeps email address.  Very useful for long running profiles.
+
+`background` - This will run indefinitely, and will only output data when the `output` console command is run.  Very useful for long running profiles with lots of function calls.
+
+`output` - Print a report based on the current tick.  The profiler will continue to operate normally. This is currently the only way to get data from the `background` profile.
+
+`reset` - Stops the profiler and resets its memory.  This is currently the only way to stop a `background` profile.
+
+`restart` - Restarts the profiler using the same options previously used to start it.
 
 In each case, `ticks` controls how long the profiler should run before stopping, and the optional `functionFilter` parameter will limit the scope of the profiler to a specific function.
 
@@ -104,20 +121,41 @@ calls    time        avg        function
 Avg: 13.54 Total: 2707.90 Ticks: 200 Est. Bucket (20 limit): 1774
 ```
 
-**Note:** each function recorded here was part of a call stack with `Spawn.work` at the root.
+**Note:** Each function recorded here was part of a call stack with `Spawn.work` at the root.
 
-## Registering functions
+## Registering additional code
 
-Many players in screeps do not utilitize the Global prototypes that are available.  The profiler supports arbitrary functional code as well, but takes a bit more work to setup.
-In order to do it, you'll need to import the profiler wherever you want to register a function, then call the registerFN method.  This will take two parameters, the first is the function that you want to profile, the second is the name that you'd like to call the function in the output.
+The profiler automatically registers many of the built in functions in Screeps, but not every player extends the provided prototypes.  The profiler supports arbitrary registration of objects and functions as well, but takes a bit more work to setup.
+In order to do it, you'll need to import the profiler wherever you want to register a function, then call `registerClass`, `registerObject`, or `registerFN`.
 
 **Example:**
 
 ```javascript
-var profiler = require('profiler');
-function getAllScouts () {
-  return Object.keys(Game.creeps).filter(function(creepName) {
-    var creep = Game.creeps[creepName];
+const profiler = require('profiler');
+
+class SuperOmegaCreep {
+  work() {
+    hiddenManagersPlaybook.delegate();
+  }
+}
+
+// Each of the functions on this class will be replaced with a profiler wrapper. The second parameter
+// is a required label.
+profiler.registerClass(SuperOmegaCreep, 'SuperOmegaCreep');
+
+const gameHandlerObject = {
+  handleGame: () => {
+    // do some work.
+  }
+};
+
+// Each of the functions on this object will be replaced with a profiler wrapper. The second parameter
+// is a required label.
+profiler.registerObject(gameHandlerObject, 'gameHandlerObject');
+
+function getAllScouts() {
+  return Object.keys(Game.creeps).filter(creepName => {
+    const creep = Game.creeps[creepName];
     return creep.memory.role === 'scout';
   });
 }
@@ -126,7 +164,7 @@ function getAllScouts () {
 getAllScouts = profiler.registerFN(getAllScouts, 'mySemiOptionalName');
 ```
 
-**Note:** the second param is optional if you pass a named function `function x() {}`, but required if you pass an anonymous function `var x = function(){}`.
+**Note:** The second param is optional if you pass a named function `function x() {}`, but required if you pass an anonymous function `var x = function(){}`.
 
 ## Potential Overhead
 
